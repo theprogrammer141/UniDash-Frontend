@@ -19,7 +19,7 @@ const SubjectsList = () => {
     const departmentFilters = selectedDepartment === 'all' ? [] : [
         {field: "department", operator: 'eq' as const, value: selectedDepartment},
     ];
-    const searchFilters = searchQuery === "all" ? [
+    const searchFilters = searchQuery.trim() !== "" ? [
         {field: 'name', operator: 'contains' as const, value: searchQuery},
     ] : [];
 
@@ -42,7 +42,7 @@ const SubjectsList = () => {
             },
             {
                 id: 'department',
-                accessorKey: 'department',
+                accessorKey: 'department.name',
                 header: () => <p className={"column-title"}>Department</p>,
                 cell: ({getValue}) => <Badge variant={"secondary"}>{getValue<string>()}</Badge>,
             },
