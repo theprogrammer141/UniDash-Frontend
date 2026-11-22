@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {UploadWidgetProps, UploadWidgetValue} from "@/types";
 import {UploadCloud} from "lucide-react";
-import {CLOUDINARY_CLOUD_NAME, CLOUDINARY_UPLOAD_PRESET} from "@/constants";
+import {getCloudinaryUploadConfig} from "@/constants";
 
 const UploadWidget = ({value = null, onChange, disabled = false}: UploadWidgetProps) => {
     const widgetRef = useRef<CloudinaryWidget | null>(null);
@@ -24,12 +24,16 @@ const UploadWidget = ({value = null, onChange, disabled = false}: UploadWidgetPr
     useEffect(() => {
         if(typeof window === "undefined") return;
 
+        let intervalId: number | undefined;
+
         const initializeWidget = () => {
             if(!window.cloudinary || widgetRef.current) return false;
 
+            const {cloudName, uploadPreset} = getCloudinaryUploadConfig();
+
             widgetRef.current = window.cloudinary.createUploadWidget({
-                cloudName: CLOUDINARY_CLOUD_NAME,
-                uploadPreset: CLOUDINARY_UPLOAD_PRESET,
+                cloudName,
+                uploadPreset,
                 multiple: false,
                 folder: 'uploads',
                 maxFileSize: 5000000,
@@ -48,15 +52,20 @@ const UploadWidget = ({value = null, onChange, disabled = false}: UploadWidgetPr
             return true;
         }
 
-        if(initializeWidget()) return;
+        if(!initializeWidget()) {
+            intervalId = window.setInterval(() => {
+                if(initializeWidget()){
+                    window.clearInterval(intervalId);
+                    intervalId = undefined;
+                }
+            }, 500);
+        }
 
-        const intervalId = window.setInterval(() => {
-            if(initializeWidget()){
-                window.clearInterval(intervalId);
-            }
-        }, 500);
-
-        return () => window.clearInterval(intervalId);
+        return () => {
+            if(intervalId !== undefined) window.clearInterval(intervalId);
+            widgetRef.current?.destroy();
+            widgetRef.current = null;
+        };
     }, []);
 
     return (

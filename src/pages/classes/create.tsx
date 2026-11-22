@@ -2,7 +2,8 @@
 import { CreateView } from "@/components/refine-ui/views/create-view.tsx";
 import { Breadcrumb } from "@/components/refine-ui/layout/breadcrumb.tsx";
 import { Button } from "@/components/ui/button.tsx";
-import { useBack } from "@refinedev/core";
+import { useBack, useCreate, useNavigation } from "@refinedev/core";
+import type { HttpError } from "@refinedev/core";
 import { Separator } from "@/components/ui/separator.tsx";
 import {
     Card,
@@ -12,8 +13,9 @@ import {
 } from "@/components/ui/card.tsx";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, type ControllerRenderProps } from "react-hook-form";
 import { classSchema } from "@/lib/schema.ts";
+import type { ClassDetails, UploadWidgetValue } from "@/types";
 import * as z from "zod";
 
 import {
@@ -26,7 +28,6 @@ import {
 } from "@/components/ui/form";
 
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label.tsx";
 
 import {
     Select,
@@ -42,13 +43,16 @@ import UploadWidget from "@/components/upload-widget.tsx";
 
 const Create = () => {
     const back = useBack();
+    const navigation = useNavigation();
 
-    const form = useForm({
+    const { mutateAsync: createClass } = useCreate<
+        ClassDetails,
+        HttpError,
+        z.infer<typeof classSchema>
+    >({ resource: "classes" });
+
+    const form = useForm<z.infer<typeof classSchema>>({
         resolver: zodResolver(classSchema),
-        refineCoreProps: {
-            resource: "classes",
-            action: "create",
-        },
     });
 
     const {
@@ -59,9 +63,10 @@ const Create = () => {
 
     const onSubmit = async (values: z.infer<typeof classSchema>) => {
         try {
-            console.log(values);
-        } catch (error) {
-            console.error("Error creating class:", error);
+            await createClass({ values });
+            navigation.list("classes");
+        } catch {
+            // useCreate already displays the error notification.
         }
     };
 
@@ -77,7 +82,10 @@ const Create = () => {
 
     const bannerPublicId = form.watch('bannerCldPubId');
 
-    const setBannerImage = (file, field) => {
+    const setBannerImage = (
+        file: UploadWidgetValue | null,
+        field: ControllerRenderProps<z.infer<typeof classSchema>, "bannerUrl">
+    ) => {
         if(file){
             field.onChange(file.url);
             form.setValue('bannerCldPubId', file.publicId, {
@@ -218,7 +226,7 @@ const Create = () => {
 
                                                 <Select
                                                     onValueChange={(value) =>
-                                                        field.onChange(Number(value))
+                                                        field.onChange(value)
                                                     }
                                                     value={field.value?.toString()}
                                                 >
